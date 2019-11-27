@@ -1,5 +1,6 @@
 function main(app) {
-	const emitter = new require('events').EventEmitter();
+	const { EventEmitter } = require('events');
+	const emitter = new EventEmitter();
 	const io = require('socket.io')(app);
 	const sockets = {};
 	const request = {};
@@ -17,7 +18,7 @@ function main(app) {
 			emitter.off('request', onRequest);
 			emitter.on('request', onRequest);
 		}
-	})
+	});
 	io.of('/peer').on('connection', (socket) => {
 		emitter.emit('connection', socket);
 		console.log('connection')
@@ -48,6 +49,7 @@ function main(app) {
 			sockets[peerId].emit('offer', socket.id, desc);
 		});
 		socket.on('answer', (peerId, desc) => {
+			socket.peerId = peerId;
 			sockets[peerId].emit('answer', socket.id, desc);
 		});
 
