@@ -2,6 +2,19 @@ function main(app) {
 	const { EventEmitter } = require('events');
 	const emitter = new EventEmitter();
 	const io = require('socket.io')(app);
+	var evs = app.listeners('request').slice(0);
+	app.removeAllListeners('request');
+	app.on('request', (req, res) => {
+		if (require('url').parse(req.url).pathname === '/js-peers/client.js') {
+			res.setHeader('Content-Type', 'text/javascript');
+			res.write(require('fs').readFileSync(require('path').join(__dirname, 'client.js')));
+			res.end();
+		} else {
+			for (var i = 0; i < evs.length; i++) {
+				evs[i].call(app, req, res);
+			}
+		}
+	});
 	const sockets = {};
 	const request = {};
 	const onRequest = (socketId, peerId, allow, deny) => {
