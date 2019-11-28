@@ -123,11 +123,17 @@
 					super.emit('ready');
 				});
 				socket.on('request', (peerId) => {
-					super.emit('request', peerId);
+					super.emit('request', peerId,
+						() => {
+							socket.emit('accept', peerId);
+						}, () => {
+							socket.emit('deny', peerId);
+						}
+					);
 				});
-				this.on('request', (peerId) => {
+				this.on('request', (peerId, accept, deny) => {
 					if (this.listeners('request').length == 1) {
-						this.accept(peerId);
+						accept();
 					}
 				});
 				socket.on('accept', (peerId) => {
@@ -179,14 +185,6 @@
 
 		connect(peerId) {
 			this._socket.emit('request', peerId);
-		}
-
-		accept(peerId) {
-			this._socket.emit('accept', peerId);
-		}
-
-		deny(peerId) {
-			this._socket.emit('deny', peerId);
 		}
 	}
 
