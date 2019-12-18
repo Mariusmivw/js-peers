@@ -9,6 +9,7 @@
 	"author": "Mariusmivw",
 	"license": "ISC",
 	"dependencies": {
-		"socket.io": "^2.3.0"
+		"js-serve": "git+https://github.com/Mariusmivw/js-serve.git",
+		"js-sockets": "git+https://github.com/Mariusmivw/js-sockets.git"
 	}
 }

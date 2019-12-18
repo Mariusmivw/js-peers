@@ -1,22 +1,39 @@
-function main(app) {
-	const { EventEmitter } = require('events');
-	const emitter = new EventEmitter();
-	const io = require('socket.io')(app);
-	var evs = app.listeners('request').slice(0);
-	app.removeAllListeners('request');
-	app.on('request', (req, res) => {
-		if (require('url').parse(req.url).pathname === '/js-peers/client.js') {
-			res.setHeader('Content-Type', 'text/javascript');
-			res.write(require('fs').readFileSync(require('path').join(__dirname, 'client.js')));
-			res.end();
-		} else {
-			for (var i = 0; i < evs.length; i++) {
-				evs[i].call(app, req, res);
-			}
+const { serve } = require('js-serve');
+const { join } = require('path');
+const EventEmitter = require('events');
+const SocketServer = require('js-sockets');
+
+Function.prototype.inherits = function(superclass) {
+	this.prototype = Object.create(superclass.prototype);
+	this.prototype.constructor = superclass;
+	this.prototype.super = function(...args) {
+		this.super = undefined;
+		superclass.call(this, ...args);
+		const _super = {};
+		for (const key in superclass.prototype) {
+			_super[key] = superclass.prototype[key];
+			if (typeof _super[key] === 'function')
+				_super[key] = _super[key].bind(this);
 		}
-	});
-	const sockets = {};
-	const request = {};
+		return _super;
+	};
+};
+
+PeerServer.inherits(EventEmitter);
+function PeerServer(server) {
+	if (!(this instanceof PeerServer)) return new PeerServer(...arguments);
+	this.super();
+
+	const io = new SocketServer(server);
+	serve(
+		{
+			path: '/js-peers/client.js',
+			file: join(__dirname, 'client.js'),
+			headers: { 'Content-Type': 'text/javascript' }
+		},
+		server
+	);
+
 	const onRequest = (socketId, peerId, allow, deny) => {
 		const status = request[socketId + peerId];
 		if (status === 'sent' || status === 'blocked') {
@@ -25,28 +42,37 @@ function main(app) {
 			allow();
 		}
 	};
-	emitter.on('request', onRequest);
-	emitter.on('newListener', (event, listener) => {
+	this.on('request', onRequest);
+	this.on('newListener', (event) => {
 		if (event === 'request') {
-			emitter.off('request', onRequest);
-			emitter.on('request', onRequest);
+			this.off('request', onRequest);
+			this.on('request', onRequest);
 		}
 	});
-	io.of('/peer').on('connection', (socket) => {
-		emitter.emit('connection', socket);
-		console.log('connection')
+
+	const sockets = {};
+	const request = {};
+	io.in('/peer').on('connection', (socket) => {
+		this.emit('connection', socket);
+		console.log('connection');
 
 		sockets[socket.id] = socket;
 		socket.emit('connection', socket.id);
 
 		socket.on('request', (peerId) => {
-			emitter.emit('request', socket.id, peerId, () => {
-				request[socket.id + peerId] = 'sent';
-				sockets[peerId].emit('request', socket.id);
-			}, () => {
-				request[socket.id + peerId] = 'blocked';
-				sockets[socket.id].emit('deny', peerId);
-			});
+			this.emit(
+				'request',
+				socket.id,
+				peerId,
+				() => {
+					request[socket.id + peerId] = 'sent';
+					sockets[peerId].emit('request', socket.id);
+				},
+				() => {
+					request[socket.id + peerId] = 'blocked';
+					sockets[socket.id].emit('deny', peerId);
+				}
+			);
 		});
 		socket.on('accept', (peerId) => {
 			sockets[peerId].emit('accept', socket.id);
@@ -66,11 +92,11 @@ function main(app) {
 			sockets[peerId].emit('answer', socket.id, desc);
 		});
 
-		socket.on('disconnect', (reason) => {
+		socket.on('disconnect', () => {
 			delete sockets[socket.id];
 		});
 	});
-	return emitter;
 }
 
-module.exports = main;
+PeerServer.PeerServer = PeerServer;
+module.exports = PeerServer;
