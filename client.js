@@ -121,6 +121,7 @@
 				this.dataChannel = pc.createDataChannel('dataChannel');
 				this.dataChannel.addEventListener('open', () => {
 					console.log('channel opened');
+					super.emit('open', this.dataChannel);
 				});
 				pc.addEventListener('icecandidate', function({ candidate }) {
 					if (!candidate) return;
