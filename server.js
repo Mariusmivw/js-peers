@@ -6,8 +6,7 @@ const SocketServer = require('js-sockets');
 Function.prototype.inherits = function(superclass) {
 	this.prototype = Object.create(superclass.prototype);
 	this.prototype.constructor = superclass;
-	this.prototype.super = function(...args) {
-		this.super = undefined;
+	this.super = function(...args) {
 		superclass.call(this, ...args);
 		const _super = {};
 		for (const key in superclass.prototype) {
@@ -22,7 +21,7 @@ Function.prototype.inherits = function(superclass) {
 PeerServer.inherits(EventEmitter);
 function PeerServer(server) {
 	if (!(this instanceof PeerServer)) return new PeerServer(...arguments);
-	this.super();
+	PeerServer.super.call(this);
 
 	const io = new SocketServer(server);
 	serve(
@@ -93,6 +92,7 @@ function PeerServer(server) {
 		});
 
 		socket.on('disconnect', () => {
+			this.emit('disconnect', socket);
 			delete sockets[socket.id];
 		});
 	});
