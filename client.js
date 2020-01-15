@@ -122,11 +122,9 @@
 				this.dataChannel.addEventListener('open', () => {
 					console.log('channel opened');
 				});
-				pc.addEventListener('icecandidate', function(event) {
-					if (event.candidate) {
-						console.log(event.candidate);
-						socket.emit('candidate', event.candidate);
-					}
+				pc.addEventListener('icecandidate', function({ candidate }) {
+					if (!candidate) return;
+					socket.emit('candidate', candidate);
 				});
 				pc.addEventListener('datachannel', (event) => {
 					event.channel.addEventListener('message', (event) => {
@@ -169,13 +167,9 @@
 				});
 				socket.on('candidate', (candidate) => {
 					console.log('got candidate');
-					pc.addIceCandidate(
-						new RTCIceCandidate({
-							candidate: candidate.candidate,
-							sdpMLineIndex: candidate.sdpMLineIndex
-						})
-					);
-					console.log('added candidate');
+					pc.addIceCandidate(new RTCIceCandidate(candidate))
+					.then(()=>console.log('added candidate'))
+					.catch((e)=>console.warn(e));
 				});
 				socket.on('offer', (peerId, desc) => {
 					console.log('offer');
