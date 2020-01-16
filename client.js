@@ -117,7 +117,7 @@
 		// path, args				=> string, object
 		// path						=> string
 		// args						=> object
-		constructor(...args) {
+		constructor(path, server, port, args) {
 			super();
 			const construct = () => {
 				if (Array.isArray(path)) {
