@@ -1,3 +1,4 @@
+const http = require('http');
 const { serve } = require('js-serve');
 const { join } = require('path');
 const EventEmitter = require('events');
@@ -18,12 +19,24 @@ Function.prototype.inherits = function(superclass) {
 	};
 };
 
+
+// server, path
+// port, path
+// port
 PeerServer.inherits(EventEmitter);
-function PeerServer(server) {
+function PeerServer(server, path='/peers') {
 	if (!(this instanceof PeerServer)) return new PeerServer(...arguments);
 	PeerServer.super.call(this);
 
+	let port;
+	if (typeof server == 'number') {
+		port = server;
+		server = http.createServer();
+	}
+
 	const io = new SocketServer(server);
+	io.on('listening', (...args)=>this.emit('listening', ...args));
+	typeof port == 'number' && server.listen(port);
 	serve(
 		{
 			path: '/js-peers/client.js',
@@ -51,7 +64,7 @@ function PeerServer(server) {
 
 	const sockets = {};
 	const request = {};
-	io.in('/peer').on('connection', (socket) => {
+	io.in(path.replace(/^\/?/, '/')).on('connection', (socket) => {
 		this.emit('connection', socket);
 		console.log('connection');
 
