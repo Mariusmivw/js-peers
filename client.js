@@ -108,14 +108,55 @@
 	}
 
 	class PeerConnection extends EventEmitter {
+		// path, server, port, args	=> string, string, number, object
+		// path, server, port		=> string, string, number
+		// path, server, args		=> string, string, object
+		// path, server				=> string, string
+		// path, port, args			=> string, number, object
+		// path, port				=> string, number
+		// path, args				=> string, object
+		// path						=> string
+		// args						=> object
 		constructor(...args) {
 			super();
 			const construct = () => {
+				if (Array.isArray(path)) {
+					args = path;
+					port = parseInt(location.port);
+					server = location.hostname;
+					path = '/';
+				} else if (typeof server == 'undefined') {
+					server = location.hostname;
+					port = parseInt(location.port);
+				} else if (Array.isArray(server)) {
+					args = server;
+					port = parseInt(location.port);
+					server = location.hostname;
+				} else if (typeof server == 'number') {
+					if (Array.isArray(port)) {
+						args = port;
+					}
+					port = server;
+					server = location.hostname;
+				} else if (typeof port == 'undefined') {
+					port = parseInt(location.port);
+				} else if (Array.isArray(port)) {
+					args = port;
+					port = parseInt(location.port);
+				}
+				if (typeof port == 'number') {
+					port = `:${port}`;
+				}
+				if (typeof args == 'undefined') {
+					args = [];
+				}
+				server.replace(/\/$/, '');
+				path.replace(/^\/?/, '/');
 				const pc = (this._peerConnection = new RTCPeerConnection(
 					...args
 				));
 				const socket = (this._socket = new Socket(
-					location.origin + '/peer'
+					server + port + path
 				));
 
 				this.dataChannel = pc.createDataChannel('dataChannel');
@@ -131,7 +172,7 @@
 					event.channel.addEventListener('message', (event) => {
 						event = JSON.parse(event.data);
 						console.log('received:', event);
-						super.emit(event.event, event.data);
+						super.emit(event.event, ...event.data);
 					});
 				});
 
@@ -151,9 +192,14 @@
 						}
 					);
 				});
-				this.on('request', (peerId, accept, deny) => {
-					if (this.listeners('request').length == 1) {
-						accept();
+				function acceptor(peerId, accept, deny) {
+					accept();
+				}
+				this.on('request', acceptor);
+				this.on('newListener', (type) => {
+					if (type == 'request') {
+						this.off(type, acceptor);
+						this.on(type, acceptor);
 					}
 				});
 				socket.on('accept', (peerId) => {
@@ -169,8 +215,8 @@
 				socket.on('candidate', (candidate) => {
 					console.log('got candidate');
 					pc.addIceCandidate(new RTCIceCandidate(candidate))
-					.then(()=>console.log('added candidate'))
-					.catch((e)=>console.warn(e));
+						.then(() => console.log('added candidate'))
+						.catch((e) => console.warn(e));
 				});
 				socket.on('offer', (peerId, desc) => {
 					console.log('offer');

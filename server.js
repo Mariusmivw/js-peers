@@ -111,5 +111,6 @@ function PeerServer(server, path='/peers') {
 	});
 }
 
-PeerServer.PeerServer = PeerServer;
 module.exports = PeerServer;
+module.exports.PeerServer = PeerServer;
+module.exports.PeerConnection = require('./node-client');;
