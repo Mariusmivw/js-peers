@@ -141,3 +141,4 @@ class PeerConnection extends EventEmitter {
 }
 
 module.exports = PeerConnection;
+module.exports.nonstandard = require('./wrtc-prebuilt/wrtc').nonstandard
